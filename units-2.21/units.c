@@ -43,7 +43,6 @@ under the terms of the GNU General Public License."
 #include <float.h>
 
 #include <stdio.h>
-#include <signal.h>
 #include <stdarg.h>
 #include <time.h>
 
@@ -3803,12 +3802,6 @@ get_output_fp(int lines)
 {
   FILE *fp = NULL;
 
-  if (isatty(fileno(stdout)) && screensize() < lines) {
-    if ((fp = popen(pager, "w")) == NULL) {
-      fprintf(stderr, "%s: can't run pager '%s--'", progname, pager);
-      perror((char*) NULL);
-    }
-  }
   if (!fp)
     fp = stdout;
 
@@ -3903,8 +3896,6 @@ tryallunits(struct unittype *have, char *searchstring)
     }
     fputc('\n',outfile);
   }
-  if (outfile != stdout)
-    pclose(outfile);
 #ifdef SIGPIPE
   signal(SIGPIPE, SIG_DFL);
 #endif
@@ -4724,9 +4715,6 @@ Options:\n\
   else
     fprintf(fp, "\nTo learn about the available units look in '%s'\n\n", unitsfile);
   fputs("Report bugs to adrianm@gnu.org.\n\n", fp);
-
-  if (fp != stdout)
-    pclose(fp);
 }
 
 /* Print message about how to get help */
@@ -5757,9 +5745,6 @@ text' will show units whose names contain 'text'.               * 75\n\
       if (unitsfile)
         fprintf(fp, fmsg, unitsfile);
 
-      if (fp != stdout)
-        pclose(fp);
-
       return 1;
     }
     if ((function = fnlookup(str))){
@@ -5802,9 +5787,6 @@ text' will show units whose names contain 'text'.               * 75\n\
 #else
     sprintf(commandbuf,"%s +%d %s", pager, unitline, file);
 #endif
-    if (system(commandbuf))
-      fprintf(stderr,"%s: cannot invoke pager '%s' to display help\n", 
-              progname, pager);
     return 1;
   }
   return 0;
@@ -5963,8 +5945,6 @@ write_files_sig(int sig)
     save_history();
 #endif
   close_logfile();
-  signal(sig, SIG_DFL);
-  raise(sig);
 }
 
 
@@ -6060,9 +6040,6 @@ main(int argc, char **argv)
      atexit(save_history);
    }
 #endif
-
-   signal(SIGINT, write_files_sig);
-   signal(SIGTERM, write_files_sig);
 
    if (logfilename) {
      if (!flags.interactive)
