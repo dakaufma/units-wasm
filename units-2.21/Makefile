@@ -56,11 +56,9 @@ mandir = ${datarootdir}/man
 
 transform=s,x,x,
 
-#DEFS=-DUNITSFILE=\"${datarootdir}/units/definitions.units\" -DLOCALEMAP=\"${datarootdir}/units/locale_map.txt\" \
-#                     -DNO_SUPPRESS_APPEND -DSUPPORT_UTF8 -DPACKAGE_NAME=\"GNU\ units\" -DPACKAGE_TARNAME=\"units\" -DPACKAGE_VERSION=\"2.21\" -DPACKAGE_STRING=\"GNU\ units\ 2.21\" -DPACKAGE_BUGREPORT=\"adrianm@gnu.org\" -DPACKAGE_URL=\"http://www.gnu.org/software/units/\" -DSTDC_HEADERS=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1
-DEFS=-DPACKAGE_NAME=\"GNU\ units\" -DPACKAGE_TARNAME=\"units\" -DPACKAGE_VERSION=\"2.21\" -DPACKAGE_STRING=\"GNU\ units\ 2.21\" -DPACKAGE_BUGREPORT=\"adrianm@gnu.org\" -DPACKAGE_URL=\"http://www.gnu.org/software/units/\" -D FORCE_FILESYSTEM=1 -I..
-#CFLAGS = -g -O3 -fpic -s ASYNCIFY --preload-file definitions.units --target=wasm32-wasi --sysroot /opt/wasi-sdk/wasi-sysroot
-CFLAGS = -g -O3 -fpic --target=wasm32-wasi --sysroot=/opt/wasi-sdk/wasi-sysroot
+DEFS=-DNO_SUPPRESS_APPEND -DPACKAGE_NAME=\"GNU\ units\" -DPACKAGE_TARNAME=\"units\" -DPACKAGE_VERSION=\"2.21\" -DPACKAGE_STRING=\"GNU\ units\ 2.21\" -DPACKAGE_BUGREPORT=\"adrianm@gnu.org\" -DPACKAGE_URL=\"http://www.gnu.org/software/units/\" -D FORCE_FILESYSTEM=1 -DLINENOISE -I..
+#CFLAGS = -g -Os -fpic -s ASYNCIFY --preload-file definitions.units --target=wasm32-wasi --sysroot /opt/wasi-sdk/wasi-sysroot
+CFLAGS = -g -Os -fpic --target=wasm32-wasi --sysroot=/opt/wasi-sdk/wasi-sysroot
 CPPFLAGS = 
 OBJECTS = units.o parse.tab.o getopt.o getopt1.o 
 
@@ -106,10 +104,10 @@ parse.tab.c: parse.y
 parse.tab.o: parse.tab.c units.h
 
 units: $(OBJECTS) 
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o units $(OBJECTS)  $(LIBS) -static
+	$(CC) $(CFLAGS) $(LDFLAGS)  -o units $(OBJECTS)  $(LIBS) -static ../linenoise/linenoise.o
 
 units.wasm: units
-	wasm-opt --asyncify -O3 units -o units.wasm
+	wasm-opt --asyncify -Os units -o units.wasm
 
 units_cur_inst: units_cur
 	sed -e "s@outfile_name = 'currency.units'@outfile_name='${prefix}/com/units/currency.units'@"\

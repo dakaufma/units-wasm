@@ -76,6 +76,10 @@ under the terms of the GNU General Public License."
 #  include <readline/readline.h>
 #  include <readline/history.h>
 #  define HISTORY_FILE ".units_history"
+#elif defined LINENOISE
+#  define RVERSTR "with linenoise for readline"
+#  include <linenoise/linenoise.h>
+#  define HISTORY_FILE ".units_history"
 #else
 #  define RVERSTR "without readline"
 #endif
@@ -3945,7 +3949,7 @@ getuser_noreadline(char **buffer, int *bufsize, const char *query)
 }  
 
 
-#ifndef READLINE
+#if !(defined(READLINE) || defined(LINENOISE))
 #  define getuser getuser_noreadline
 #else 
            /* we DO have readline */
@@ -3956,7 +3960,11 @@ getuser_readline(char **buffer, int *bufsize, const char *query)
   int valid = 0;
   while (!valid){
     if (*buffer) free(*buffer);
+#ifdef LINENOISE
+    *buffer = linenoise(query);
+#else
     *buffer = readline(query);
+#endif
     if (*buffer)
       replacectrlchars(*buffer);
     if (!*buffer || strwidth(*buffer)>=0)
@@ -3966,11 +3974,21 @@ getuser_readline(char **buffer, int *bufsize, const char *query)
   }
 #else
     if (*buffer) free(*buffer);
+#ifdef LINENOISE
+    *buffer = linenoise(query);
+#else
     *buffer = readline(query);
+#endif
     if (*buffer)
       replacectrlchars(*buffer);
 #endif
-  if (nonempty(*buffer)) add_history(*buffer);
+  if (nonempty(*buffer)) {
+#ifdef LINENOISE
+    linenoiseHistoryAdd(*buffer);
+#else
+    add_history(*buffer);
+#endif
+  }
   if (!*buffer){
     if (!flags.quiet)
        putchar('\n');
@@ -4007,7 +4025,7 @@ getuser(char **buffer, int *bufsize, const char *query)
 #define CU_DONE 5
 
 char *
-completeunits(char *text, int state)
+completeunits(const char *text, int state)
 {
   static int uhash, fhash, phash, checktype;
   static struct prefixlist *curprefix, *unitprefix;
@@ -4102,15 +4120,47 @@ completeunits(char *text, int state)
           strcat(output, curunit->name);
         }       
       } 
-      else if (startswith(curunit->name,text)) 
+      else if (startswith(curunit->name,text)) {
         output = dupstr(curunit->name);
+        }
       curunit=curunit->next;
-      if (output)
-        return output;
+      if (output) return output;
     }
   } 
   return 0;
 }
+
+#ifdef LINENOISE
+void
+linenoise_completeunits(const char *text, linenoiseCompletions *lc)
+{
+  const char *word_break_chars = " \t+-*/()|^;";
+  for (const char *boundary = text + strlen(text) - 1; boundary >= text - 1; boundary--) {
+    if (boundary < text || strchr(word_break_chars, *boundary) != NULL) {
+      const char *word = boundary + 1;
+      size_t prefix_len = word - text;
+      int state = 0;
+      do {
+        char *completion = completeunits(word, state);
+        if (completion) {
+          char *fullline = (char *)mymalloc(1+prefix_len+strlen(completion), "(linenoise_completeunits)");
+          memcpy(fullline, text, prefix_len);
+          memcpy(fullline + prefix_len, completion, 1+strlen(completion));
+
+          linenoiseAddCompletion(lc, fullline);
+          free(fullline);
+          free(completion);
+          state = 1;
+        } else {
+          state = 0;
+        }
+      } while (state != 0);
+      return;
+    }
+  }
+}
+#endif
+
 
 #endif /* READLINE */
 
@@ -6016,6 +6066,8 @@ main(int argc, char **argv)
      int file_exists;
      historyfile = personalfile(NULL,HISTORY_FILE,1,&file_exists);
    }
+#elif defined LINENOISE
+   flags.readline = 1;
 #else
    flags.readline = 0;
 #endif
@@ -6032,6 +6084,11 @@ main(int argc, char **argv)
      pager = DEFAULTPAGER;
 
    flags.interactive = processargs(argc, argv, &havestr, &wantstr);
+
+#ifdef LINENOISE
+   linenoiseSetCompletionCallback(linenoise_completeunits);
+   linenoiseHistorySetMaxLen(8192);
+#endif
 
 #ifdef READLINE   
    if (flags.interactive && flags.readline && historyfile){
