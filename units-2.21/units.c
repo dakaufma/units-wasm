@@ -84,11 +84,11 @@ under the terms of the GNU General Public License."
 #include "units.h"
 
 #ifndef UNITSFILE
-#  define UNITSFILE "definitions.units"
+#  define UNITSFILE "/definitions.units"
 #endif
 
 #ifndef LOCALEMAP
-#  define LOCALEMAP "locale_map.txt"
+#  define LOCALEMAP "/locale_map.txt"
 #endif
 
 #ifndef DATADIR
@@ -3921,6 +3921,7 @@ getuser_noreadline(char **buffer, int *bufsize, const char *query)
   int valid = 0;
   while(!valid){
     fputs(query, stdout);
+    fflush(stdout);
     if (!fgetslong(buffer, bufsize, stdin,0)){
       if (!flags.quiet)
         putchar('\n');
@@ -3933,6 +3934,7 @@ getuser_noreadline(char **buffer, int *bufsize, const char *query)
   }
 #else
   fputs(query, stdout);
+  fflush(stdout);
   if (!fgetslong(buffer, bufsize, stdin,0)){
     if (!flags.quiet)
       putchar('\n');
